@@ -46,6 +46,12 @@ rules:
     - patch
 - apiGroups:
     - ""
+  resources:
+    - nodes
+  verbs:
+    - delete
+- apiGroups:
+    - ""
     - events.k8s.io
   resources:
     - events
@@ -66,3 +72,4 @@ rules:
     - delete
     - patch
     - update
+    - describe
