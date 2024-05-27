@@ -22,6 +22,8 @@ managedNodeGroups:
     iam:
       withAddonPolicies:
         cloudWatch: true
+    ssh:
+      publicKeyName: xwnamz-watcher-alpha
  
   - name: c5
     instanceType: c5.9xlarge
@@ -39,6 +41,8 @@ managedNodeGroups:
         ebs: true
         efs: true
         fsx: true
+    ssh:
+      publicKeyName: xwnamz-watcher-alpha
 
 iam:
   withOIDC: true
