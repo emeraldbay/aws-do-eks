@@ -31,11 +31,11 @@ spec:
           image: 590184049168.dkr.ecr.us-west-2.amazonaws.com/hyperpod-job-watcher:xwnamz
           resources:
             limits:
-              cpu: 2
-              memory: 2Gi
+              cpu: 30
+              memory: 4Gi
             requests:
-              cpu: 2
-              memory: 2Gi
+              cpu: 30
+              memory: 4Gi
           imagePullPolicy: Always
           securityContext:
             privileged: true
