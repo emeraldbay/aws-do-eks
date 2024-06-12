@@ -5,7 +5,6 @@ metadata:
   namespace: kubeflow
   annotations:
     enableHyperpodWatchDog : "true"
-    enableCustomerLogSharing : "true"
     trainingJobLogRegex : value1
     trainingJobLogCutOffTime: xx
     trainingJobThroughputRegex: value2
@@ -26,7 +25,7 @@ spec:
                 - "/opt/pytorch-mnist/mnist.py"
                 - "--epochs=100"
     Worker:
-      replicas: 1
+      replicas: 2
       restartPolicy: OnFailure
       template:
         spec:
