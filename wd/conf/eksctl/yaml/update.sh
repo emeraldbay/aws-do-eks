@@ -30,7 +30,8 @@ kubectl logs -f $(kubectl get pods -l app=job-watcher -n kube-system -o jsonpath
 
 # Test job creation
 kubectl create -f conf/eksctl/yaml/pytorchjob_mnist.yaml
-kubectl create -f pytorchjob_mnist.yaml   # AGI
+kubectl create -f conf/eksctl/yaml/pytorchjob_agi.yaml
+kubectl create -f pytorchjob_mnist.yaml   # AGI hosts
 kubectl get pods -n kubeflow
 operator_pod_name=`kubectl get pods -n kubeflow | grep "training-operator" | awk -F' ' '{print $1}'`
 # only for 1 time debug
@@ -39,7 +40,7 @@ kubectl logs -f -n kubeflow $operator_pod_name
 
 # clean up and retry
 kubectl delete deployment job-watcher -n kube-system
-kubectl delete pytorchjob pt-test-job1 -n kubeflow
+kubectl delete pytorchjob pt-job-1 -n kubeflow
 
 kubectl get pods -l app=job-watcher -n kube-system
 kubectl get pods -l app=job-watcher -n kube-system | grep -oE '^[^ ]+'
@@ -53,12 +54,13 @@ kubectl delete pytorchjob pt-test-job1 -n kubeflow
 # Test node label change
 kubectl get node
 
-kubectl label nodes ip-192-168-207-242.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
-kubectl label nodes i-0194083c3e0e352e7.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
+kubectl label nodes ip-192-168-216-49.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
+kubectl label nodes ip-192-168-137-218.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 
-kubectl label nodes i-08e69006e78c25e4c.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+kubectl label nodes ip-192-168-137-218.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+
 kubectl label nodes i-0194083c3e0e352e7.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=SchedulablePreferred
-kubectl label nodes ip-192-168-129-59.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=Schedulable
+kubectl label nodes ip-192-168-212-8.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=Schedulable
 kubectl get nodes ip-192-168-129-59.us-west-2.compute.internal --show-labels | grep Unschedulable
 kubectl label nodes ip-192-168-129-59.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 kubectl uncordon ip-192-168-129-59.us-west-2.compute.internal
@@ -71,3 +73,8 @@ kubectl delete pods -l $LABEL=$VALUE
 kubectl delete pods --all
 
 kubectl delete pod pt-test-job1-worker-0
+
+# Check restart times
+kubectl describe pytorchjob -n kubeflow pt-job-1
+kubectl get pods -n kubeflow
+kubectl describe pod -n kubeflow pt-job-1-master-0

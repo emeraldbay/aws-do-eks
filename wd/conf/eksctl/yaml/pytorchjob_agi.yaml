@@ -1,0 +1,60 @@
+apiVersion: "kubeflow.org/v1"
+kind: PyTorchJob
+metadata:
+  name: pt-job-1
+  namespace: kubeflow
+  annotations:
+    sagemaker.amazonaws.com/enable-job-auto-resume: "true"
+    sagemaker.amazonaws.com/job-max-retry-count: "2"
+    sagemaker.amazonaws.com/enable-cloudwatch-log-monitor: "true"
+    sagemaker.amazonaws.com/filter-training-log-regrex: "Training job Tflops"
+    sagemaker.amazonaws.com/log-emit-interval-mins: "1"
+    sagemaker.amazonaws.com/max-log-missing-time-mins: "5"
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: training.kubeflow.org/replica-type
+                        operator: In
+                        values:
+                          - master
+                  topologyKey: "kubernetes.io/hostname"
+          containers:
+            - name: pytorch
+              image: docker.io/kubeflowkatib/pytorch-mnist:v1beta1-45c5727
+              imagePullPolicy: Always
+              command:
+                - "python3"
+                - "/opt/pytorch-mnist/mnist.py"
+                - "--epochs=100"
+    Worker:
+      replicas: 2
+      restartPolicy: OnFailure
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: training.kubeflow.org/replica-type
+                        operator: In
+                        values:
+                          - worker
+                  topologyKey: "kubernetes.io/hostname"
+          containers:
+            - name: pytorch
+              image: docker.io/kubeflowkatib/pytorch-mnist:v1beta1-45c5727
+              imagePullPolicy: Always
+              command:
+                - "python3"
+                - "/opt/pytorch-mnist/mnist.py"
+                - "--epochs=100"

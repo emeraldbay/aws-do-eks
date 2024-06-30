@@ -53,6 +53,7 @@ rules:
   verbs:
     - delete
     - deletecollection
+    - patch
 - apiGroups:
     - ""
     - events.k8s.io
