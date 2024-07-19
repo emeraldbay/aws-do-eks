@@ -23,10 +23,14 @@ kubectl create -f conf/eksctl/yaml/test_job_watcher.yaml
 # in case deployment failed / debug deployment failure
 kubectl describe deployment job-watcher -n kube-system
 kubectl get pods -n kube-system --field-selector=status.phase!=Running
-kubectl describe replicaset job-watcher-77c69c857c-rln7j -n kube-system
+kubectl describe replicaset job-watcher-77c69c857c -n kube-system
 # monitor job watcher logs
 # kubectl logs -f job-watcher-77c69c857c --namespace=kube-system
 kubectl logs -f $(kubectl get pods -l app=job-watcher -n kube-system -o jsonpath='{.items[0].metadata.name}') -n kube-system
+
+
+# update k8s config
+aws eks update-kubeconfig --region us-west-2 --name xin-eks-1-30-c5
 
 # Test job creation
 kubectl create -f conf/eksctl/yaml/pytorchjob_mnist.yaml
@@ -54,15 +58,22 @@ kubectl delete pytorchjob pt-test-job1 -n kubeflow
 # Test node label change
 kubectl get node
 
-kubectl label nodes ip-192-168-216-49.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
-kubectl label nodes ip-192-168-137-218.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
+kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
+kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 
-kubectl label nodes ip-192-168-137-218.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+# "ip-192-168-154-218.us-west-2.compute.internal"
+# force delete pod
+kubectl delete pod pt-job-1-worker-0 --force --grace-period=0 --namespace=kubeflow
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the clust
+er indefinitely.
+pod "pt-job-1-worker-0" force deleted
 
+ip-192-168-141-82.us-west-2.compute.internal
 kubectl label nodes i-0194083c3e0e352e7.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=SchedulablePreferred
 kubectl label nodes ip-192-168-212-8.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=Schedulable
 kubectl get nodes ip-192-168-129-59.us-west-2.compute.internal --show-labels | grep Unschedulable
-kubectl label nodes ip-192-168-129-59.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
+kubectl label nodes ip-192-168-252-176.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 kubectl uncordon ip-192-168-129-59.us-west-2.compute.internal
 
 # Delete pod
@@ -77,4 +88,48 @@ kubectl delete pod pt-test-job1-worker-0
 # Check restart times
 kubectl describe pytorchjob -n kubeflow pt-job-1
 kubectl get pods -n kubeflow
-kubectl describe pod -n kubeflow pt-job-1-master-0
+kubectl describe pod -n kubeflow pt-job-1-worker-1
+# Successfully assigned kubeflow/pt-job-1-worker-0 to ip-192-168-188-53.us-west-2.compute.internal
+
+# check instance launch time
+aws ec2 describe-instances --instance-ids i-02e074c0e7614876e --query "Reservations[].Instances[].LaunchTime" --output text
+aws ec2 describe-instances \
+  --filters "Name=instance-id,Values=i-02e074c0e7614876e" \
+  --query 'Reservations[*].Instances[*].[InstanceId, LastRebootTime]'
+
+aws ec2 describe-instances --output table --instance-id i-02e074c0e7614876e
+
+# download and upload docker image
+ada credentials update --account=321098965911 --provider=isengard --role=Admin --once
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 321098965911.dkr.ecr.us-east-2.amazonaws.com
+docker pull 321098965911.dkr.ecr.us-east-2.amazonaws.com/probe:megatron-llm
+
+ada credentials update --account=654654592687 --provider=isengard --role=Admin --once
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 654654592687.dkr.ecr.us-west-2.amazonaws.com
+docker tag 321098965911.dkr.ecr.us-east-2.amazonaws.com/probe:megatron-llm 654654592687.dkr.ecr.us-west-2.amazonaws.com/probe:megatron-llm
+docker push 654654592687.dkr.ecr.us-west-2.amazonaws.com/probe:megatron-llm
+
+# scale tes
+kubectl apply -f ./etcv2.yaml
+sleep 5
+kubectl apply -f ./megatron-lm.yaml
+
+kubectl delete -f ./megatron-lm.yaml
+kubectl delete -f ./etcv2.yaml
+
+
+## Jump host
+sudo apt install unzip
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+aws eks update-kubeconfig --region us-west-2 --name hyperpod-scaling-benchmark-eks-cluster-g5
+
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.29.3/2024-04-19/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+sudo cp ./kubectl /usr/sbin
+
+
+# delete test job
+kubectl delete pytorchjob pytorch-simple -n kubeflow

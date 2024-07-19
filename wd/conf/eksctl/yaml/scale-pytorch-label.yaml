@@ -1,0 +1,56 @@
+apiVersion: "kubeflow.org/v1"
+kind: PyTorchJob
+metadata:
+  name: pt-job-1
+  namespace: kubeflow
+  annotations:
+    sagemaker.amazonaws.com/enable-job-auto-resume: true
+    sagemaker.amazonaws.com/job-max-retry-count: 500
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: training.kubeflow.org/replica-type
+                        operator: In
+                        values:
+                          - master
+                  topologyKey: "kubernetes.io/hostname"
+          nodeSelector:
+              sagemaker.amazonaws.com/node-health-status: SchedulablePreferred
+          containers:
+            - name: pytorch
+              image: 654654592687.dkr.ecr.us-west-2.amazonaws.com/test-repo:latest
+              imagePullPolicy: Always
+              args:
+                - "--epochs=1000"
+    Worker:
+      replicas: 508
+      restartPolicy: OnFailure
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: training.kubeflow.org/replica-type
+                        operator: In
+                        values:
+                          - worker
+                  topologyKey: "kubernetes.io/hostname"
+            nodeSelector:
+              sagemaker.amazonaws.com/node-health-status: SchedulablePreferred      
+          containers:
+            - name: pytorch
+              image: 654654592687.dkr.ecr.us-west-2.amazonaws.com/test-repo:latest
+              imagePullPolicy: Always
+              args:
+                - "--epochs=1000"

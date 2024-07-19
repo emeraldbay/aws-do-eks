@@ -1,0 +1,91 @@
+apiVersion: "kubeflow.org/v1"
+kind: PyTorchJob
+metadata:
+  name: megatron-llm
+  namespace: kubeflow
+spec:
+  elasticPolicy:
+    rdzvBackend: etcd
+    rdzvHost: etcd
+    rdzvPort: 2379
+    minReplicas: 1
+    maxReplicas: 504
+    maxRestarts: 1
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 90
+  pytorchReplicaSpecs:
+    Worker:
+      replicas: 504
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app: megatron-llm
+        spec:
+          volumes:
+            - name: shmem
+              hostPath: 
+                path: /dev/shm
+            - name: local
+              hostPath:
+                path: /mnt/k8s-disks/0
+          containers:
+            - name: pytorch
+              image: 654654592687.dkr.ecr.us-east-2.amazonaws.com/probe:megatron-llm
+              imagePullPolicy: Always
+              resources:
+                requests:
+                  nvidia.com/gpu: 1
+                  vpc.amazonaws.com/efa: 1
+                limits:
+                  nvidia.com/gpu: 1
+                  vpc.amazonaws.com/efa: 1
+              env:
+              - name: LOGLEVEL
+                value: "DEBUG"
+              - name: FI_PROVIDER
+                value: efa # should always be efa
+              - name: FI_LOG_LEVEL
+                value: "1"
+
+              #enable if GPU
+              - name: NCCL_SOCKET_IFNAME
+                value: "^lo"
+              - name: NCCL_P2P_DISABLE
+                value: "1" # Rank 1504 failed to pass monitoredBarrier in 600000 ms
+              - name: NCCL_IGNORE_DISABLED_P2P
+                value: "1"
+              - name: TORCH_DISTRIBUTED_DEBUG
+                value: "DETAIL"
+              - name: TORCH_NCCL_ENABLE_MONITORING
+                value: "1"
+              - name: TORCH_NCCL_TRACE_BUFFER_SIZE
+                value: "20000"
+              - name: TORCH_NCCL_DUMP_ON_TIMEOUT
+                value: "1"
+              - name: TORCH_NCCL_DEBUG_INFO_TEMP_FILE
+                value: "/local/nccl_trace_rank_"
+              - name: PYTORCH_CUDA_ALLOC_CONF
+                value: "expandable_segments:True"
+              - name: NCCL_DEBUG
+                value: "INFO"
+              - name: TORCH_NCCL_ASYNC_ERROR_HANDLING
+                value: "1"
+              - name: TORCH_DIST_INIT_BARRIER
+                value: "1"
+              - name: CUDA_DEVICE_MAX_CONNECTIONS
+                value: "1" # RuntimeError: Using async gradient all reduce requires setting the environment variable CUDA_DEVICE_MAX_CONNECTIONS to 1
+              command:
+                - bash
+                - -c
+                - "torchrun --nproc_per_node=1 --nnodes=504 --rdzv_id=megatron-llm --rdzv_backend=etcd-v2 --rdzv_conf=timeout=1200,join_timeout=1200 /workspace/Megatron-LM/pretrain_gpt.py --distributed-timeout-minutes 90 --tensor-model-parallel-size 1 --pipeline-model-parallel-size 4 --num-layers 24 --hidden-size 2304 --num-attention-heads 24 --seq-length 1024 --max-position-embeddings 1024 --micro-batch-size 1 --global-batch-size 512 --train-samples 146484375 --lr-decay-samples 126953125 --lr-warmup-samples 183105 --lr 6.0e-5 --min-lr 6.0e-6 --lr-decay-style cosine --log-interval 1 --eval-iters 40 --eval-interval 1000 --data-path /dataset/gpt2/my-gpt2_text_document --vocab-file /dataset/gpt2/gpt2-vocab.json --merge-file /dataset/gpt2/gpt2-merges.txt --split 98,2,0 --clip-grad 1.0 --weight-decay 0.1 --adam-beta1 0.9 --adam-beta2 0.95 --init-method-std 0.006 --no-persist-layer-norm --attention-softmax-in-fp32 --bf16 --recompute-activations"
+              volumeMounts:
+                - name: shmem
+                  mountPath: /dev/shm
+                - name: local
+                  mountPath: /local
