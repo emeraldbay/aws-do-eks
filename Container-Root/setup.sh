@@ -64,3 +64,6 @@ python -m pip install torchx[kubernetes]
 # Install sbom utilities
 ./eks/ops/setup/install-sbom-utils.sh
 
+# Generate SBOM and store it in the root of the container image
+./sbom.sh
+
