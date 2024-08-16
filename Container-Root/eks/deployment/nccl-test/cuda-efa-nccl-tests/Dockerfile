@@ -1,13 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #FROM nvidia/cuda:12.2.2-devel-ubuntu22.04
-FROM nvcr.io/nvidia/cuda:12.2.2-devel-ubuntu22.04
 
+ARG CUDA_VERSION=12.2.2
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04
 ARG GDRCOPY_VERSION=v2.4.1
 ARG EFA_INSTALLER_VERSION=1.33.0
 ARG AWS_OFI_NCCL_VERSION=v1.9.2-aws
 ARG NCCL_VERSION=v2.21.5-1
 ARG NCCL_TESTS_VERSION=v2.13.9
+
+RUN echo "Versions: CUDA=${CUDA_VERSION} GDDRCOPY=${GDRCOPY_VERSION} EFA=${EFA_INSTALLER_VERSION} OFI=${AWS_OFI_NCCL_VERSION} NCCL=${NCCL_VERSION} TESTS=${NCCL_TESTS_VERSION}"
 
 RUN apt-get update -y && apt-get upgrade -y
 RUN apt-get remove -y --allow-change-held-packages \
