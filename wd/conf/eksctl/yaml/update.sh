@@ -58,7 +58,9 @@ kubectl delete pytorchjob pt-test-job1 -n kubeflow
 # Test node label change
 kubectl get node
 
-kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+kubectl describe pod -n kubeflow pt-job-1-worker-1
+
+kubectl label nodes ip-192-168-239-97.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
 kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
 kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 
@@ -69,7 +71,7 @@ Warning: Immediate deletion does not wait for confirmation that the running reso
 er indefinitely.
 pod "pt-job-1-worker-0" force deleted
 
-ip-192-168-141-82.us-west-2.compute.internal
+kubectl describe pod -n kubeflow pt-job-1-worker-1
 kubectl label nodes i-0194083c3e0e352e7.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=SchedulablePreferred
 kubectl label nodes ip-192-168-212-8.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=Schedulable
 kubectl get nodes ip-192-168-129-59.us-west-2.compute.internal --show-labels | grep Unschedulable

@@ -5,7 +5,7 @@ metadata:
   namespace: kubeflow
   annotations:
     sagemaker.amazonaws.com/enable-job-auto-resume: "true"
-    sagemaker.amazonaws.com/job-max-retry-count: "2"
+    sagemaker.amazonaws.com/job-max-retry-count: "10"
     sagemaker.amazonaws.com/enable-cloudwatch-log-monitor: "true"
     sagemaker.amazonaws.com/filter-training-log-regrex: "Training job Tflops"
     sagemaker.amazonaws.com/log-emit-interval-mins: "1"
