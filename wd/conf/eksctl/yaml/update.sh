@@ -28,9 +28,13 @@ kubectl describe replicaset job-watcher-77c69c857c -n kube-system
 # kubectl logs -f job-watcher-77c69c857c --namespace=kube-system
 kubectl logs -f $(kubectl get pods -l app=job-watcher -n kube-system -o jsonpath='{.items[0].metadata.name}') -n kube-system
 
-
 # update k8s config
 aws eks update-kubeconfig --region us-west-2 --name xin-eks-1-30-c5
+aws eks update-kubeconfig —region us-west-2 —name EKS-ManualK8sClusterWithCustomerVpc-1724883189-eade179c8
+
+# create namespace
+kubectl create namespace hyperpod1
+kubectl get namespaces
 
 # Test job creation
 kubectl create -f conf/eksctl/yaml/pytorchjob_mnist.yaml
