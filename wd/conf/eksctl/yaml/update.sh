@@ -18,6 +18,23 @@ kubectl delete serviceaccount job-watcher -n kube-system
 kubectl delete clusterrolebinding job-watcher-binding
 kubectl delete clusterrole system:job-watcher
 
+
+# https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/HyperPodHelmChart/charts/job-auto-restart/templates/job-auto-restart-rbac.yaml
+# Validate job watcher related permissions
+kubectl describe clusterrole job-auto-restart
+kubectl describe serviceaccount job-auto-restart -n aws-hyperpod
+kubectl describe clusterrolebinding  job-auto-restart
+
+# Validate HMA related permissions
+kubectl describe clusterrole health-monitoring-agent
+kubectl describe serviceaccount health-monitoring-agent -n aws-hyperpod
+kubectl describe clusterrolebinding  health-monitoring-agent
+
+# Validate burn-in related permissions
+kubectl describe clusterrole deep-health-check-service-account-role
+kubectl describe serviceaccount deep-health-check-service-account -n aws-hyperpod
+kubectl describe clusterrolebinding  deep-health-check-service-account-role-binding
+
 # deploy job watcher
 kubectl create -f conf/eksctl/yaml/test_job_watcher.yaml
 # in case deployment failed / debug deployment failure
@@ -139,3 +156,42 @@ sudo cp ./kubectl /usr/sbin
 
 # delete test job
 kubectl delete pytorchjob pytorch-simple -n kubeflow
+
+
+# create Hyperpod cluster
+
+aws sagemaker-dev --endpoint $ENDPOINT create-cluster \
+    --cluster-name $HP_CLUSTER_NAME \
+    --orchestrator 'Eks={ClusterArn='$EKS_CLUSTER_ARN'}' \
+    --instance-groups '{
+    "InstanceGroupName": "group1",
+    "InstanceType": "ml.c5.2xlarge",
+    "InstanceCount": 2,
+    "LifeCycleConfig": {
+        "SourceS3Uri": "s3://'$BUCKET_NAME'",
+        "OnCreate": "on_create_noop.sh"
+    },
+    "ExecutionRole": "'$EXECUTION_ROLE'",
+    "ThreadsPerCore": 1
+}' --vpc-config '{
+   "SecurityGroupIds": ["'$SECURITY_GROUP'"],
+   "Subnets": ["'$SUBNET'"]
+}'
+
+aws sagemaker create-cluster \
+    --cluster-name $HP_CLUSTER_NAME \
+    --orchestrator 'Eks={ClusterArn='$EKS_CLUSTER_ARN'}' \
+    --instance-groups '{
+    "InstanceGroupName": "group1",
+    "InstanceType": "ml.c5.4xlarge",
+    "InstanceCount": 4,
+    "LifeCycleConfig": {
+        "SourceS3Uri": "s3://'$BUCKET_NAME'",
+        "OnCreate": "on_create_noop.sh"
+    },
+    "ExecutionRole": "'$EXECUTION_ROLE'",
+    "ThreadsPerCore": 1
+}' --vpc-config '{
+   "SecurityGroupIds": ["'$SECURITY_GROUP'"],
+   "Subnets": ["'$SUBNET'"]
+}'
