@@ -157,8 +157,16 @@ sudo cp ./kubectl /usr/sbin
 # delete test job
 kubectl delete pytorchjob pytorch-simple -n kubeflow
 
-
 # create Hyperpod cluster
+cd /workplace/xwnamz/HyperPodEKSTests/bin
+
+SUBNET=$(cfn-output $VPC_STACK_NAME PrivateSubnet1)
+SECURITY_GROUP=$(cfn-output $VPC_STACK_NAME NoIngressSecurityGroup)
+EKS_CLUSTER_ARN=$(cfn-output $EKS_STACK_NAME ClusterArn)
+EXECUTION_ROLE=$(cfn-output $SAGEMAKER_STACK_NAME ExecutionRole)
+SERVICE_ROLE=$(cfn-output $SAGEMAKER_STACK_NAME ServiceRole)
+BUCKET_NAME=$(cfn-output $SAGEMAKER_STACK_NAME Bucket)
+HP_CLUSTER_NAME="hyperpod-eks-test-$(date +%s)"
 
 aws sagemaker-dev --endpoint $ENDPOINT create-cluster \
     --cluster-name $HP_CLUSTER_NAME \
@@ -166,7 +174,7 @@ aws sagemaker-dev --endpoint $ENDPOINT create-cluster \
     --instance-groups '{
     "InstanceGroupName": "group1",
     "InstanceType": "ml.c5.2xlarge",
-    "InstanceCount": 2,
+    "InstanceCount": 4,
     "LifeCycleConfig": {
         "SourceS3Uri": "s3://'$BUCKET_NAME'",
         "OnCreate": "on_create_noop.sh"
@@ -179,6 +187,7 @@ aws sagemaker-dev --endpoint $ENDPOINT create-cluster \
 }'
 
 aws sagemaker create-cluster \
+    --endpoint $ENDPOINT \
     --cluster-name $HP_CLUSTER_NAME \
     --orchestrator 'Eks={ClusterArn='$EKS_CLUSTER_ARN'}' \
     --instance-groups '{
@@ -195,3 +204,16 @@ aws sagemaker create-cluster \
    "SecurityGroupIds": ["'$SECURITY_GROUP'"],
    "Subnets": ["'$SUBNET'"]
 }'
+
+# describe Hyperpod cluster
+aws sagemaker-dev --endpoint $ENDPOINT describe-cluster --cluster-name $HP_CLUSTER_NAME
+aws sagemaker --endpoint $ENDPOINT describe-cluster --cluster-name $HP_CLUSTER_NAME
+aws sagemaker describe-cluster --cluster-name hyperpod-eks-test-1726982497
+aws sagemaker-dev --endpoint $ENDPOINT describe-cluster --cluster-name arn:aws:sagemaker:us-west-2:891377004071:cluster/6v8fd6qwgdnv
+aws sagemaker --endpoint $ENDPOINT describe-cluster --cluster-name arn:aws:sagemaker:us-west-2:891377004071:cluster/6v8fd6qwgdnv
+
+
+# delete Hyperpod cluster
+aws sagemaker --endpoint $ENDPOINT delete-cluster --cluster-name arn:aws:sagemaker:us-west-2:891377004071:cluster/jl12jfn14b1a
+aws sagemaker-dev --endpoint $ENDPOINT delete-cluster --cluster-name arn:aws:sagemaker:us-west-2:891377004071:cluster/jl12jfn14b1a
+aws sagemaker delete-cluster --cluster-name hyperpod-eks-test-1726982497
