@@ -47,7 +47,7 @@ kubectl logs -f $(kubectl get pods -l app=job-watcher -n kube-system -o jsonpath
 
 # update k8s config
 aws eks update-kubeconfig --region us-west-2 --name xin-eks-1-30-c5
-aws eks update-kubeconfig —region us-west-2 —name EKS-ManualK8sClusterWithCustomerVpc-1724883189-eade179c8
+aws eks update-kubeconfig --region us-west-2 —name EKS-ManualK8sClusterWithCustomerVpc-1724883189-eade179c8
 
 # create namespace
 kubectl create namespace hyperpod1
@@ -64,7 +64,7 @@ kubectl logs -n kubeflow $operator_pod_name
 kubectl logs -f -n kubeflow $operator_pod_name
 
 # clean up and retry
-kubectl delete deployment job-watcher -n kube-system
+kubectl delete deployment job-watcher -n kube-system    # only used for self testing
 kubectl delete pytorchjob pt-job-1 -n kubeflow
 
 kubectl get pods -l app=job-watcher -n kube-system
