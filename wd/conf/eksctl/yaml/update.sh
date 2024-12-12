@@ -7,6 +7,7 @@ kubectl apply -k "github.com/kubeflow/training-operator/manifests/overlays/stand
 kubectl create -f conf/eksctl/yaml/test_rbac.yaml
 kubectl create -f conf/eksctl/yaml/test_rbac_iam.yaml     # with IAM binding
 kubectl create -f conf/eksctl/yaml/test_rbac_iam_agi.yaml
+kubectl create -f conf/eksctl/yaml/job-watcher-permision-from-helm.yaml
 # check service role
 kubectl describe serviceaccount job-watcher -n kube-system
 # Annotations:         eks.amazonaws.com/role-arn: arn:aws:iam::590184049168:role/Test-EKS-Admin
@@ -81,7 +82,7 @@ kubectl get node
 
 kubectl describe pod -n kubeflow pt-job-1-worker-1
 
-kubectl label nodes hyperpod-i-077d281abaef65046 sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
+kubectl label nodes ip-192-168-196-253.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReplacement
 kubectl label nodes ip-192-168-164-40.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=UnschedulablePendingReboot
 kubectl label nodes hyperpod-i-077d281abaef65046 sagemaker.amazonaws.com/node-health-status- --overwrite
 
@@ -93,10 +94,10 @@ er indefinitely.
 pod "pt-job-1-worker-0" force deleted
 
 kubectl describe pod -n kubeflow pt-job-1-worker-1
-kubectl label nodes i-0194083c3e0e352e7.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=SchedulablePreferred
+kubectl label nodes ip-192-168-196-253.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=SchedulablePreferred
 kubectl label nodes ip-192-168-212-8.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status=Schedulable
 kubectl get nodes hyperpod-i-0f38d8a021f279074 --show-labels | grep Unschedulable
-kubectl label nodes ip-192-168-252-176.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
+kubectl label nodes ip-192-168-196-253.us-west-2.compute.internal sagemaker.amazonaws.com/node-health-status- --overwrite
 kubectl uncordon ip-192-168-129-59.us-west-2.compute.internal
 
 # check node labels
@@ -280,6 +281,8 @@ kubectl config current-context
 python3 -m venv /home/ubuntu/hyperpod-cli-venv                                                                          │
 source /home/ubuntu/hyperpod-cli-venv/bin/activate
 
+helm list
+helm get all my-release
 helm dependencies update helm_chart/HyperPodHelmChart
 helm install dependencies helm_chart/HyperPodHelmChart --dry-run
 helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
@@ -361,3 +364,22 @@ aws sagemaker delete-cluster --region us-west-2 \
     --cluster-name $HP_CLUSTER_NAME
 
 arn:aws:sagemaker:us-west-2:654654592687:cluster/qovn86muc8d6
+
+# upgrade kubeflow training operator
+# remove old version
+kubectl delete -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=v1.7.0"
+namespace "kubeflow" deleted
+customresourcedefinition.apiextensions.k8s.io "mpijobs.kubeflow.org" deleted
+customresourcedefinition.apiextensions.k8s.io "mxjobs.kubeflow.org" deleted
+customresourcedefinition.apiextensions.k8s.io "paddlejobs.kubeflow.org" deleted
+customresourcedefinition.apiextensions.k8s.io "pytorchjobs.kubeflow.org" deleted
+customresourcedefinition.apiextensions.k8s.io "tfjobs.kubeflow.org" deleted
+customresourcedefinition.apiextensions.k8s.io "xgboostjobs.kubeflow.org" deleted
+serviceaccount "training-operator" deleted
+clusterrole.rbac.authorization.k8s.io "training-operator" deleted
+clusterrolebinding.rbac.authorization.k8s.io "training-operator" deleted
+service "training-operator" deleted
+deployment.apps "training-operator" deleted
+
+# install the new version
+kubectl apply --server-side -k "github.com/kubeflow/training-operator.git/manifests/overlays/standalone?ref=v1.8.1"
