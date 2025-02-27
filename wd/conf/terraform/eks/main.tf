@@ -26,7 +26,6 @@ provider "kubectl" {
 }
 
 # Data
-
 data "aws_eks_cluster_auth" "this" {
   name = module.eks.cluster_name
 }
@@ -70,24 +69,47 @@ ${data.http.ssm_agent_daemonset_url.response_body}
 YAML
 }
 
-resource "helm_release" "k8s_device_plugin" {
-  name       = "k8s-device-plugin"
-  repository = "https://nvidia.github.io/k8s-device-plugin"
-  chart      = "nvidia-device-plugin"
-  version    = "0.15.0"
-  namespace  = "kube-system"
-}
+# resource "helm_release" "k8s_device_plugin" {
+#   name       = "k8s-device-plugin"
+#   repository = "https://nvidia.github.io/k8s-device-plugin"
+#   chart      = "nvidia-device-plugin"
+#   version    = "0.17.0"    // https://github.com/NVIDIA/k8s-device-plugin/releases
+#   namespace  = "kube-system"
+# }
 
 # Upstream Terraform Modules
-
+// Reference https://github.com/terraform-aws-modules/terraform-aws-eks
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.12"
+  version = "~> 20.33"
 
   cluster_name                   = local.name
   cluster_version                = local.cluster_version
   cluster_endpoint_public_access = true
   cluster_enabled_log_types      = var.cluster_enabled_log_types
+
+  # Optional: Adds the current caller identity as an administrator via cluster access entry
+  enable_cluster_creator_admin_permissions = true
+
+  // https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest#cluster-access-entry
+  // https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/README.md
+  access_entries = {
+      # One access entry with a policy associated
+      creater_view_access = {
+        principal_arn = "arn:aws:iam::934367179273:role/Admin"
+
+        // https://docs.aws.amazon.com/eks/latest/userguide/access-policy-permissions.html
+        policy_associations = {
+          example = {
+            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+            access_scope = {
+              namespaces = ["default"]
+              type       = "namespace"
+            }
+          }
+        }
+      }
+  }
 
   cluster_addons = {
     coredns = {
@@ -116,43 +138,43 @@ module "eks" {
       capacity_type  = "ON_DEMAND"
       min_size       = 1
       max_size       = 5
-      desired_size   = 1
+      desired_size   = 2
     }
-    gpu = {
-      instance_types = ["g4dn.8xlarge"]
-      capacity_type  = "ON_DEMAND"
-      #capacity_type  = "SPOT"
-      min_size       = 0
-      max_size       = 10
-      desired_size   = 1
-      ami_type       = "AL2_x86_64_GPU"
-      #ami_id         = data.aws_ami.eks_gpu_node.id
-      #enable_bootstrap_user_data = true
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size           = 40
-            volume_type           = "gp3"
-            iops                  = 3000
-            throughput            = 150
-            encrypted             = true
-            delete_on_termination = true
-          }
-        }
-      }
-    }
+    # gpu = {
+    #   instance_types = ["g4dn.8xlarge"]
+    #   capacity_type  = "ON_DEMAND"
+    #   #capacity_type  = "SPOT"
+    #   min_size       = 0
+    #   max_size       = 10
+    #   desired_size   = 1
+    #   ami_type       = "AL2_x86_64_GPU"
+    #   #ami_id         = data.aws_ami.eks_gpu_node.id
+    #   #enable_bootstrap_user_data = true
+    #   block_device_mappings = {
+    #     xvda = {
+    #       device_name = "/dev/xvda"
+    #       ebs = {
+    #         volume_size           = 40
+    #         volume_type           = "gp3"
+    #         iops                  = 3000
+    #         throughput            = 150
+    #         encrypted             = true
+    #         delete_on_termination = true
+    #       }
+    #     }
+    #   }
+    # }
   }
 
-  create_aws_auth_configmap = false
-  manage_aws_auth_configmap = true
+  # create_aws_auth_configmap = false
+  # manage_aws_auth_configmap = true
 
-  #enable_efa_support = false
+  # enable_efa_support = false
 
-  labels = {
-    "vpc.amazonaws.com/efa.present" = "false"
-    "nvidia.com/gpu.present"        = "true"
-  }
+  # labels = {
+  #  "vpc.amazonaws.com/efa.present" = "false"
+  #  "nvidia.com/gpu.present"        = "true"
+  # }
 
   # Extend node-to-node security group rules
   node_security_group_additional_rules = {
